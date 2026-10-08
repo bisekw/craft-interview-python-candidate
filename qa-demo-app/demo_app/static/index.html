@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Logowanie — zadanie QA</title>
+  <style>
+    body { margin: 0; background: #eef2f7; color: #172033; font: 16px system-ui, sans-serif; }
+    main { max-width: 900px; margin: 3rem auto; padding: 0 1rem; }
+    .forms { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; }
+    form { background: white; padding: 1.5rem; border: 1px solid #d8dfeb; border-radius: 12px; }
+    label { display: block; margin-top: 1rem; font-weight: 600; }
+    input { box-sizing: border-box; width: 100%; margin-top: .4rem; padding: .7rem; border: 1px solid #8d9ab0; border-radius: 5px; }
+    button { margin-top: 1rem; padding: .7rem 1.2rem; color: white; background: #2858a7; border: 0; border-radius: 5px; cursor: pointer; }
+    [aria-live] { min-height: 1.5rem; margin-top: 1rem; }
+    [role="alert"] { color: #a12222; } [role="status"] { color: #166335; }
+  </style>
+</head>
+<body>
+<main>
+  <h1 id="app-title">Logowanie</h1>
+  <div class="forms">
+    <form aria-label="Logowanie gracza">
+      <h2>Panel gracza</h2>
+      <label for="username">Login</label><input id="username" autocomplete="username" required>
+      <label>Hasło</label><input type="password" autocomplete="current-password" required>
+      <button type="submit">Zaloguj</button><div aria-live="polite"></div>
+    </form>
+    <form aria-label="Logowanie operatora">
+      <h2>Panel operatora</h2>
+      <label>Login</label><input autocomplete="username">
+      <label>Hasło</label><input type="password" autocomplete="current-password">
+      <button type="submit">Zaloguj</button><div aria-live="polite"></div>
+    </form>
+  </div>
+</main>
+<script>
+  const player = document.querySelector('form[aria-label="Logowanie gracza"]');
+  const operator = document.querySelector('form[aria-label="Logowanie operatora"]');
+  for (const input of document.querySelectorAll('input')) {
+    if (!input.id) input.id = `field-${crypto.randomUUID()}`;
+    input.previousElementSibling.htmlFor = input.id;
+  }
+  if (new URLSearchParams(location.search).get('layout') === 'reversed') {
+    document.querySelector('.forms').prepend(operator);
+  }
+  operator.addEventListener('submit', event => {
+    event.preventDefault();
+    operator.querySelector('[aria-live]').textContent = 'Panel operatora jest nieaktywny';
+  });
+  player.addEventListener('submit', async event => {
+    event.preventDefault();
+    const feedback = player.querySelector('[aria-live]');
+    const button = player.querySelector('button');
+    feedback.replaceChildren();
+    button.disabled = true;
+    try {
+      const response = await fetch('/api/login', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({username: player.querySelector('#username').value,
+                              password: player.querySelector('input[type="password"]').value})
+      });
+      await new Promise(resolve => setTimeout(resolve, 350));
+      const message = document.createElement('div');
+      message.setAttribute('role', response.ok ? 'status' : 'alert');
+      message.textContent = response.ok ? 'Zalogowano jako tester' : 'Niepoprawne dane logowania';
+      feedback.append(message);
+    } catch (error) {
+      const message = document.createElement('div');
+      message.setAttribute('role', 'alert');
+      message.textContent = 'Nie można połączyć się z lokalnym API';
+      feedback.append(message);
+    } finally {
+      button.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>

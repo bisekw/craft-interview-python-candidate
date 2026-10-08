@@ -1,0 +1,1 @@
+"""Local interview demo application."""
